@@ -1,7 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from logger import Logger
-from data_reader import Dataset
+from data_reader import Data
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -13,6 +12,8 @@ activation = tf.nn.selu
 
 init_learning_rate = 0.001
 display_step = 10
+batch_size = 200
+iter_count = 20
 
 
 def shared_layer(x):
@@ -48,19 +49,20 @@ class Model:
 		self.data = dataset
 		self.task_index = ind
 		self.scope_name = 'model{}'.format(ind)
+		self.collections = list()
 
 		with tf.variable_scope(self.scope_name):
 
 			self.x = tf.placeholder(tf.float64,
 				shape=[batch_size, dataset.count()])
 
-			self.delay_step = tf.constant(delay_step,
-				name='delay_step')
+			self.delay_step = delay_step
 
 	def encoder(self, x):
 		"""define local encoder"""
 
 		scope_name = '{}/local_encoder'.format(self.scope_name)
+		self.collections.append(scope_name)
 
 		encoded = tf.contrib.layers.fully_connected(x,
 			num_hidden_1 * 2,
@@ -77,13 +79,14 @@ class Model:
 	        variables_collections=[scope_name])
 
 		#shared layer
-		encoded_3 = shared_layer(encoded_2, self.cluster)
+		encoded_3 = shared_layer(encoded_2)
 		return encoded_3
 
 	def decoder(self, x):
 		"""define local decoder"""
 
 		scope_name = '{}/local_decoder'.format(self.scope_name)
+		self.collections.append(scope_name)
 
 		decoded_1 = tf.contrib.layers.fully_connected(x,
 			num_hidden_1, 
@@ -101,7 +104,7 @@ class Model:
 	        variables_collections=[scope_name])
 
 		decoded = tf.contrib.layers.fully_connected(decoded_2,
-			self.dataset.count(), 
+			self.data.count(), 
 	        activation_fn=activation,
 	        weights_initializer=tf.orthogonal_initializer(),
 	        biases_initializer=tf.zeros_initializer(),
@@ -125,12 +128,14 @@ class Model:
 		global_step -- tf.Tensor containing global session step
 		"""
 
-		should_run = tf.equal(global_step, self.delay_step)
+		should_run = (tf.equal(global_step % tf.to_int64(self.delay_step), 0))
+		vars_to_upd = [tf.get_collection(name) for name in self.collections]
+		
 		loss = tf.cond(should_run,
-			estimate(),
-			tf.to_float(0.0))
-
-		return loss
+			lambda: self.estimate(),
+			lambda: tf.to_float(0.0))
+		
+		return loss, train_op
 
 
 	def get_batch(self):
@@ -138,22 +143,25 @@ class Model:
 	
 
 def sess_runner(sets, cluster):
-	global_step = tf.train.create_global_step()
+	global_step = tf.train.get_or_create_global_step()
+	global_step_update_op = tf.assign_add(global_step, global_step + 1)
 	losses = [m.collect_loss(global_step) for m in sets]
 	total_loss = tf.reduce_mean(losses)
 	opt = tf.train.AdamOptimizer()
 	train_op = opt.minimize(total_loss)
+	values = dict()
+	print(global_step)
 	
-
 	stop_hook = tf.train.StopAtStepHook(last_step=20)
 
-	with tf.train.MonitoredTrainingSession(hooks=[stop_hook],
-		config=tf.ConfigProto(log_device_placement=True)) as sess:
-
+	with tf.train.MonitoredTrainingSession(hooks=[stop_hook]) as sess:
 		for i in range(iter_count):
+			tf.train.global_step(sess, global_step)
 			for s in sets:
 				if not i % s.delay_step:
 					values[s.x] = s.get_batch()
 
+			print(sess.run([global_step_update_op]))
+
 			for i in range(200):						
-				print(sess.run([total_loss, train_op], feed_dict=values))
+				print(sess.run([*losses, train_op], feed_dict=values))

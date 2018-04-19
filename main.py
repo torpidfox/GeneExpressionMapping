@@ -2,14 +2,14 @@ import tensorflow as tf
 import numpy as np
 import itertools
 import __main__ as main
-from logger import Logger
-from data_reader import Dataset
+from data_reader import Data
 import argparse
+import autoenc_shared as nn
 
-main_dataset = Dataset(filenames=["../data/batched/batch{}.txt".format(i) for i in range(20)])
-supporting_datasets = Dataset(["../data/..."],
+main_dataset = Data(filenames=["../data/batched/batch{}.txt".format(i) for i in range(1)])
+supporting_datasets = Data(["../data/80955_filtered.txt"],
 	batch_size=50,
-	padding_size = 5)
+	padding_size=4)
 
 
 
