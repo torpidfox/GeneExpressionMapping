@@ -15,7 +15,9 @@ init_learning_rate = 0.001
 display_step = 10
 
 
-def shared_layer(x, cluster_spec):
+def shared_layer(x):
+	"""encoder layer shared across all models"""
+	
 	with tf.variable_scope('shared',
 		reuse=tf.AUTO_REUSE):
 
@@ -56,6 +58,8 @@ class Model:
 				name='delay_step')
 
 	def encoder(self, x):
+		"""define local encoder"""
+
 		scope_name = '{}/local_encoder'.format(self.scope_name)
 
 		encoded = tf.contrib.layers.fully_connected(x,
@@ -72,10 +76,13 @@ class Model:
 	        biases_initializer=tf.zeros_initializer(),
 	        variables_collections=[scope_name])
 
+		#shared layer
 		encoded_3 = shared_layer(encoded_2, self.cluster)
 		return encoded_3
 
 	def decoder(self, x):
+		"""define local decoder"""
+
 		scope_name = '{}/local_decoder'.format(self.scope_name)
 
 		decoded_1 = tf.contrib.layers.fully_connected(x,
@@ -104,12 +111,20 @@ class Model:
 
 
 	def estimate(self):
+		"""append model's ops to graph"""
+
 		encoded = self.encoder(self.x)
 		decoded = self.decoder(encoded)
 
 		return tf.losses.mean_squared_error(self.x, decoded)
 
 	def collect_loss(self, global_step):
+		"""
+		collect loss according to global step
+		
+		global_step -- tf.Tensor containing global session step
+		"""
+
 		should_run = tf.equal(global_step, self.delay_step)
 		loss = tf.cond(should_run,
 			estimate(),

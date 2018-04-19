@@ -3,7 +3,7 @@ import numpy as np
 class Data:
 	""" class preparing feeding data for model """
 
-	def __init__(filenames=[], batch_size=200, padding_size=1):
+	def __init__(filenames=[], batch_size=150, padding_size=1):
 		"""
 		keywords args:
 		filenames -- source files
@@ -30,6 +30,7 @@ class Data:
 
 	def count(self):
 		"""get sample size"""
+		
 		return self.dim
 
 	def __next__(self):
