@@ -28,6 +28,9 @@ class Data:
 
 		self.file = [lines[i:i + self.batch_size] * self.padding_size for i in range(0, len(lines), self.batch_size)]
 		self.file.pop(-1)
+		print(len(self.filenames))
+		print(len(self.file))
+		print(len(self.file[0]))
 
 	def count(self):
 		"""get sample size"""
@@ -36,7 +39,7 @@ class Data:
 
 	def __next__(self):
 		"""get next batch"""
-		if not self.file:
+		if len(self.file) == 1:
 			self._load_next()
 
 		return np.asarray(self.file.pop())

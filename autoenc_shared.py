@@ -13,8 +13,7 @@ activation = tf.nn.selu
 init_learning_rate = 0.001
 display_step = 10
 batch_size = 200
-iter_count = 20
-
+iter_count = 100
 
 def shared_layer(x):
 	"""encoder layer shared across all models"""
@@ -127,41 +126,37 @@ class Model:
 		
 		global_step -- tf.Tensor containing global session step
 		"""
+		should_run = (tf.equal(global_step % tf.to_int32(self.delay_step), 0))
 
-		should_run = (tf.equal(global_step % tf.to_int64(self.delay_step), 0))
-		vars_to_upd = [tf.get_collection(name) for name in self.collections]
-		
 		loss = tf.cond(should_run,
 			lambda: self.estimate(),
 			lambda: tf.to_float(0.0))
 		
-		return loss, train_op
-
+		return loss
 
 	def get_batch(self):
 		return next(self.data)
 	
 
 def sess_runner(sets, cluster):
-	global_step = tf.train.get_or_create_global_step()
-	global_step_update_op = tf.assign_add(global_step, global_step + 1)
+	global_step = tf.Variable(0, name='global_step', trainable=False)
 	losses = [m.collect_loss(global_step) for m in sets]
 	total_loss = tf.reduce_mean(losses)
 	opt = tf.train.AdamOptimizer()
-	train_op = opt.minimize(total_loss)
+	train_op = opt.minimize(total_loss, global_step=global_step)
 	values = dict()
-	print(global_step)
-	
-	stop_hook = tf.train.StopAtStepHook(last_step=20)
+	stop_hook = tf.train.StopAtStepHook(last_step=100)
 
-	with tf.train.MonitoredTrainingSession(hooks=[stop_hook]) as sess:
-		for i in range(iter_count):
-			tf.train.global_step(sess, global_step)
-			for s in sets:
-				if not i % s.delay_step:
-					values[s.x] = s.get_batch()
+	with tf.train.MonitoredTrainingSession(hooks=[stop_hook]) as sess:	
+		while not sess.should_stop():
+			for i in range(iter_count):
+				tf.train.global_step(sess, global_step)
+				#tf.train.global_step(sess, global_step)
+				for s in sets:
+					if not i % s.delay_step:
+						values[s.x] = s.get_batch()
 
-			print(sess.run([global_step_update_op]))
+				#print(sess.run([global_step_update_op]))
 
-			for i in range(200):						
-				print(sess.run([*losses, train_op], feed_dict=values))
+				for i in range(200):				
+					print(sess.run([*losses, train_op, global_step], feed_dict=values))
