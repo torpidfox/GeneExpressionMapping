@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from data_reader import Data
+from logger import Logger
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -12,7 +13,7 @@ activation = tf.nn.selu
 
 init_learning_rate = 0.001
 display_step = 10
-batch_size = 200
+batch_size = 150
 iter_count = 100
 
 def shared_layer(x):
@@ -139,24 +140,31 @@ class Model:
 	
 
 def sess_runner(sets, cluster):
-	global_step = tf.Variable(0, name='global_step', trainable=False)
-	losses = [m.collect_loss(global_step) for m in sets]
+	values = dict()
+	
+	epoch_step = tf.Variable(-1, name='epoch_num', trainable=False)
+	step_inc_op = tf.assign_add(epoch_step, 1)
+
+	losses = [m.collect_loss(epoch_step) for m in sets]	
 	total_loss = tf.reduce_mean(losses)
 	opt = tf.train.AdamOptimizer()
-	train_op = opt.minimize(total_loss, global_step=global_step)
-	values = dict()
+	train_op = opt.minimize(total_loss)
+
+	global_step = tf.train.get_or_create_global_step()
 	stop_hook = tf.train.StopAtStepHook(last_step=100)
 
-	with tf.train.MonitoredTrainingSession(hooks=[stop_hook]) as sess:	
+	with tf.train.MonitoredTrainingSession(hooks=[stop_hook]) as sess, Logger('test_run') as logging:	
 		while not sess.should_stop():
 			for i in range(iter_count):
-				tf.train.global_step(sess, global_step)
-				#tf.train.global_step(sess, global_step)
+				sess.run([step_inc_op])
+
 				for s in sets:
 					if not i % s.delay_step:
 						values[s.x] = s.get_batch()
 
-				#print(sess.run([global_step_update_op]))
+				for j in range(200):				
+					loss1, loss2, step, _ = sess.run([*losses, epoch_step, train_op], feed_dict=values)
+					logging.log_results(i, [loss1, loss2])
 
-				for i in range(200):				
-					print(sess.run([*losses, train_op, global_step], feed_dict=values))
+					if not j % 10:
+						print(step, loss1, loss2)

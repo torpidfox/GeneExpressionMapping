@@ -9,7 +9,7 @@ import autoenc_shared as nn
 main_dataset = Data(filenames=["../data/batched/batch{}.txt".format(i) for i in range(26)])
 supporting_datasets = Data(["../data/80955_filtered.txt"],
 	batch_size=50,
-	padding_size=5)
+	padding_size=3)
 
 
 
