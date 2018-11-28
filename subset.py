@@ -20,22 +20,6 @@ layer = lambda x, v: tf.nn.xw_plus_b(x, v['w'], v['b'])
 
 recon_loss = lambda x1, x2: tf.losses.mean_squared_error(x1, x2)
 
-# def shared(x):
-# 	layers = list()
-
-# 	with tf.variable_scope(shared_scope,
-# 		reuse=tf.AUTO_REUSE):
-
-# 		for i, dim in enumerate(shape):
-# 			act = activation if i != len(shape) - 1 else tf.keras.activations.linear
-
-# 			x = tf.contrib.layers.fully_connected(x,
-# 					dim,
-# 					activation_fn=act,
-# 					scope=shared_scope+str(i))
-
-# 	return x
-
 def init_variables(shape):
 	variable_list = list()
 
@@ -73,12 +57,9 @@ class PrivateDomain:
 		self.tagged = tagged
 		self.delay = delay
 		self.classes = classes
-		self.encoder_shape = [self.data.count(), self.data.count(), num_hidden_1, num_hidden_1, num_hidden_1]
+		self.encoder_shape = [self.data.count(), self.data.count(), self.data.count(), num_hidden_1, num_hidden_1, num_hidden_1]
 
-		#self.encoder_variables = init_variables(self.encoder_shape)
 		self.decoder_shape = shared_shape[::-1] + self.encoder_shape[::-1] 
-		#self.decoder_shape = shape[:-1:-1] + self.encoder_shape[:-1:-1] + [self.data.count()]
-		print(self.decoder_shape)
 
 		self.x = tf.placeholder(tf.float32, 
 			shape=[batch_size, data.count()])
@@ -98,11 +79,6 @@ class PrivateDomain:
 		self.decoder_v = init_variables(self.decoder_shape)
 
 	def run(self, x):
-		#x = tf.nn.batch_normalization(x)
-		#act before didn't work
-		#x = activation(x)
-		#x = tf.nn.dropout(x, 0.8)
-
 		encoded = nn(self.encoder_v, x, is_enc=True)
 		squeezed = shared_layers(encoded)
 		decoded = nn(self.decoder_v, squeezed)
@@ -110,73 +86,6 @@ class PrivateDomain:
 		self.result = [x, encoded, squeezed, decoded]
 
 		return recon_loss(x, decoded)
-
-
-	# def encode(self, x):
-	# 	# with tf.variable_scope(self.scope,
-	# 	# 	reuse=tf.AUTO_REUSE):
-
-	# 		#x = tf.layers.batch_normalization(x)
-	
-	# 	x = tf.nn.dropout(x, 0.8)
-	# 	#x = activation(x)
-	# 	#x = tf.contrib.nn.alpha_dropout(x, 0.8)			
-		
-	# 	for i, dim in enumerate(self.encoder_shape):
-	# 		x = tf.contrib.layers.fully_connected(x,
-	# 			dim,
-	# 			activation_fn=activation)
-	# 			#scope=self.scope + 'enc' + str(i)))
-
-	# 	return x
-
-	# def decode(self, x):
-	# 	layers = list()
-
-	# 	# with tf.variable_scope(self.scope,
-	# 	# 	reuse=tf.AUTO_REUSE):
-
-	# 	for i in range(len(self.decoder_shape)):
-	# 		act = activation if i != len(self.decoder_shape) - 1 else tf.keras.activations.linear
-
-	# 		x = tf.contrib.layers.fully_connected(x,
-	# 			self.decoder_shape[i],
-	# 			activation_fn=act)
-	# 			#scope=self.scope + 'dec' + str(i)))
-
-
-	# 	return x
-
-	# def classify(self):
-	# 	with tf.variable_scope(self.scope_name,
-	# 		reuse=tf.AUTO_REUSE):
-
-	# 		w = tf.get_variable('class/w',
-	# 				initializer=init,
-	# 				shape=[self.red_coeff, len(self.classes)-1],
-	# 				dtype=tf.float32) 
-
-	# 		b = tf.get_variable('class/b',
-	# 				initializer=init,
-	# 				shape=[len(self.classes)-1],
-	# 				dtype=tf.float32)
-
-	# 		self.logits = tf.nn.xw_plus_b(self.result[1], w, b)
-	# 		self.scores = tf.greater(self.logits, 0.5)	
-
-
-	# def estimate(self, x):
-	# 	encoded = self.encode(x)
-	# 	#squeezed = shared(encoded)
-	# 	decoded = self.decode(encoded)
-
-	# 	self.result = [x,
-	# 	encoded,
-	# 	#squeezed,
-	# 	decoded]
-
-
-	# 	return tf.reduce_mean(tf.pow(x - decoded, 2))
 
 	def loss(self,
 		global_step):
@@ -210,10 +119,3 @@ class PrivateDomain:
 		feed_dict = {k: v for k, v in zip(self.feedable, self.data.validation_set())}
 
 		return feed_dict
-
-
-
-
-
-
-

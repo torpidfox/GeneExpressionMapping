@@ -36,7 +36,8 @@ class Model:
 						lambda: tf.to_float(0.0)
 						))
 
-		self.loss = distr_loss+private_loss
+		self.loss = private_loss
+		#self.loss = distr_loss+private_loss
 
 		return self.loss
 
@@ -63,9 +64,6 @@ class Model:
 
 		learning_rate = tf.train.exponential_decay(1e-2, self.epoch_step, 100, 0.96)
 		opt = tf.train.AdagradOptimizer(learning_rate=1e-3).minimize(tf.reduce_sum(self.losses()))
-		# gvs = optimizer.compute_gradients(tf.reduce_sum(self.losses()))		
-		# capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in gvs]
-		# opt = optimizer.apply_gradients(gvs)
 
 		valid_op = [self.loss] + [s.result for s in self.sets]
 		train_op = valid_op + [opt]
@@ -88,20 +86,15 @@ class Model:
 					print(var.name)	
 
 				while valid_loss_step < 100:
-					#variables_names = [v.name for v in tf.trainable_variables()]
-					#values = sess.run(variables_names)
-
 					step = sess.run(step_inc_op)
-					feed_dict = self.feed_dict(step)	
-					
-			
-					#for j in range(iter_count):				
+					feed_dict = self.feed_dict(step)
+
 					loss, *result, _ = sess.run(train_op, feed_dict=feed_dict)
 
 					if not step % 10:
 						print(step, loss)
-						print("Epoch: {}, distr loss: {}, recon loss 1: {}, recon loss 2: {}".format(step, loss[0], loss[2], loss[3]))
-						#print('valid', valid_loss, valid_loss_step)
+						print("Epoch: {}, distr loss: 0, recon loss 1: {}, recon loss 2: {}".format(step, loss[0], loss[1]))
+						print('valid', valid_loss, valid_loss_step)
 						valid_loss, *valid_result = sess.run(valid_op, feed_dict=self.valid)
 						if sum(valid_loss) < min_valid_loss:
 							min_valid_loss = sum(valid_loss) 

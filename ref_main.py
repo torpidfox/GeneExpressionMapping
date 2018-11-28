@@ -14,12 +14,12 @@ main_dataset = Data(filenames=['../data/batch{}.txt'.format(i) for i in range(10
 	exp=True,
 	reuse=False)
 
-# main_dataset = Data(filenames=['../data/75140_m.txt'],
-# 	batch_size=50,
-# 	log=False,
-# 	norm=False,
-# 	exp=False,
-# 	reuse=True)
+supporting_dataset = Data(filenames=['../data/75140_m.txt'],
+	batch_size=50,
+	log=True,
+	norm=False,
+	exp=False,
+	reuse=True)
 
 # main_dataset = Data(["../data/schiza_formatted.txt"],
 # 	batch_size=50,
@@ -29,11 +29,11 @@ main_dataset = Data(filenames=['../data/batch{}.txt'.format(i) for i in range(10
 # 	log=True
 # )
 
-supporting_dataset = Data(["../data/80655_formatted.txt"],
-	batch_size=50,
-	norm=False,
-	log=True,
-	reuse=True)
+# supporting_dataset = Data(["../data/80655_formatted.txt"],
+# 	batch_size=50,
+# 	norm=False,
+# 	log=True,
+# 	reuse=True)
 
 # check_dataset = Data(["../data/42546_tagged.txt"],
 # 	batch_size=25,
