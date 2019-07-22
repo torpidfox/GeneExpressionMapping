@@ -6,14 +6,16 @@ init = tf.contrib.layers.xavier_initializer()
 
 shared_scope = 'shared'
 gene_count = 2053
-num_hidden_2 = gene_count // 3
+num_hidden_2 = gene_count // 4
 num_hidden_1 = gene_count // 2
 batch_size = 50
-shared_shape = [num_hidden_1, num_hidden_2, num_hidden_2, num_hidden_2]
+shared_shape = [num_hidden_1, num_hidden_1, num_hidden_2, num_hidden_2, num_hidden_2]
 activation = tf.nn.selu
 
 init_weights = lambda n1, n2: tf.Variable(
-            tf.random_normal([n1, n2], 0, np.sqrt(2 / n1)))
+            tf.random_normal([n1, n2], 0, np.sqrt(2 / n1))
+            )
+
 init_zeros = lambda n1: tf.Variable([0] * n1, dtype = 'float')
 
 layer = lambda x, v: tf.nn.xw_plus_b(x, v['w'], v['b'])
@@ -26,6 +28,7 @@ def init_variables(shape):
 	for i, dim in enumerate(shape[:-1]):
 		l = {'w' : init_weights(dim, shape[i + 1]),
 		'b' : init_zeros(shape[i + 1])}
+		tf.add_to_collection(tf.GraphKeys.REGULARIZATION_LOSSES, l['w'])
 		variable_list.append(l)
 
 	return variable_list
@@ -34,8 +37,10 @@ def nn(layers, x, is_enc=False, is_private=True):
 	for i, l in enumerate(layers):
 		if i != len(layers) - 1:
 			x = activation(layer(x, l))
-			#x = tf.nn.dropout(x, 0.8) if i == 0 and is_enc else x
-		elif not is_enc and is_private:
+			#x = tf.nn.dropout(x, 0.8) if i == 0 and is_enc else x 
+		elif is_enc and is_private:
+			x = activation(layer(x, l))
+		else:
 			x = layer(x, l)
 
 	return x
@@ -57,12 +62,14 @@ class PrivateDomain:
 		self.tagged = tagged
 		self.delay = delay
 		self.classes = classes
-		self.encoder_shape = [self.data.count(), self.data.count(), self.data.count(), num_hidden_1, num_hidden_1, num_hidden_1]
+		self.encoder_shape = [self.data.dim, self.data.dim, num_hidden_1, num_hidden_1]
 
 		self.decoder_shape = shared_shape[::-1] + self.encoder_shape[::-1] 
 
-		self.x = tf.placeholder(tf.float32, 
-			shape=[batch_size, data.count()])
+		self.x = self.data.placeholder
+
+		# self.x = tf.placeholder(tf.float32, 
+		# 	shape=[batch_size, self.data.dim])
 
 		self.feedable = [self.x]
 
@@ -111,11 +118,12 @@ class PrivateDomain:
 		else:
 			vals = self.data.placeholders()
 
+		#feed_dict = {self.x : vals}
 		feed_dict = {k: v for k, v in zip(self.feedable, vals)}
 
 		return feed_dict
 
 	def feed_valid_dict(self):
-		feed_dict = {k: v for k, v in zip(self.feedable, self.data.validation_set())}
+		feed_dict = {self.x : self.data.valid}
 
 		return feed_dict

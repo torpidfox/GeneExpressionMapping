@@ -2,8 +2,14 @@ from subset import PrivateDomain
 import tensorflow as tf
 from logger import Logger
 
+import sys
+sys.path.append('./add_libs/')
+import losses as los
+summaries_dir = './summary/'
+
 tres_valid_loss = 20
 iter_count = 50
+regularizer = tf.contrib.layers.l2_regularizer(scale=0.0001)
 
 class Model:
 	def __init__(self, sets):
@@ -29,15 +35,17 @@ class Model:
 						tf.equal(delay_step2, 0))
 
 					_, var2 = tf.nn.moments(s2.result[0], axes=[0])
-					coeff = tf.sqrt(tf.reduce_mean(var1) * tf.reduce_mean(var2))
+					coeff = 1.0 / tf.sqrt(tf.reduce_mean(var1) * tf.reduce_mean(var2))
 
 					distr_loss.append(tf.cond(should_add,
-						lambda: tf.losses.mean_squared_error(s2.result[1], s1.result[1]),
+						lambda: los.mmd_loss(s2.result[1], s1.result[1], 1),
 						lambda: tf.to_float(0.0)
 						))
 
-		self.loss = private_loss
-		#self.loss = distr_loss+private_loss
+		#self.loss = [tf.to_float(0.0), tf.to_float(0.0)] + private_loss
+		# reg_variables = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+		# reg_term = tf.contrib.layers.apply_regularization(regularizer, reg_variables)
+		self.loss = distr_loss+private_loss
 
 		return self.loss
 
@@ -63,7 +71,12 @@ class Model:
 		step_inc_op = tf.assign_add(self.epoch_step, 1)
 
 		learning_rate = tf.train.exponential_decay(1e-2, self.epoch_step, 100, 0.96)
-		opt = tf.train.AdagradOptimizer(learning_rate=1e-3).minimize(tf.reduce_sum(self.losses()))
+
+		with tf.name_scope('loss'):
+			total_loss = tf.reduce_sum(self.losses())
+		tf.summary.scalar('loss', total_loss)
+
+		opt = tf.train.AdagradOptimizer(learning_rate=1e-3).minimize(total_loss)
 
 		valid_op = [self.loss] + [s.result for s in self.sets]
 		train_op = valid_op + [opt]
@@ -76,32 +89,43 @@ class Model:
 		min_valid_loss = float('inf')
 		valid_loss = 10
 		step = 0
+		saver = tf.train.Saver()
 
-		with Logger('red_new') as logging:
+		with Logger('75140') as logging:
 			with tf.Session() as sess:
+				#summary_op = tf.merge_all_summaries()
+				#train_writer = tf.train.SummaryWriter(summaries_dir + '/train', sess.graph)
+				#test_writer = tf.train.SummaryWriter(summaries_dir + '/test')
+
 				sess.run(tf.global_variables_initializer())	
 				sess.run(tf.local_variables_initializer())
 
-				for var in tf.trainable_variables():
-					print(var.name)	
-
-				while valid_loss_step < 100:
+				while valid_loss_step < 300:
 					step = sess.run(step_inc_op)
 					feed_dict = self.feed_dict(step)
 
 					loss, *result, _ = sess.run(train_op, feed_dict=feed_dict)
+					#train_writer.add_summary(summary, step)
+
 
 					if not step % 10:
 						print(step, loss)
-						print("Epoch: {}, distr loss: 0, recon loss 1: {}, recon loss 2: {}".format(step, loss[0], loss[1]))
+						# print("Epoch: {}, distr loss: {}, recon loss 1: {}, recon loss 2: {}, regular loss: {}"
+						# 	.format(step, loss[0], loss[2], loss[3], loss[4]))
+						
 						print('valid', valid_loss, valid_loss_step)
 						valid_loss, *valid_result = sess.run(valid_op, feed_dict=self.valid)
+						#test_writer.add_summary(summary, step)
+
 						if sum(valid_loss) < min_valid_loss:
 							min_valid_loss = sum(valid_loss) 
 							valid_loss_step = 0
 							logging.dump_res(valid_result, attr='valid')
 						else:
 							valid_loss_step += 1
+
+					if not step % 1000:
+						saver.save(sess, "./tmp/model.ckpt")
 
 					logging.log_results(step, [loss, valid_loss])
 						

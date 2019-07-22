@@ -215,7 +215,12 @@ class Data:
 				for l in file:
 					if ind in inds:
 						line = l.split()
-						line = list(map(lambda x: x.replace(',', '').replace('"', '').replace('[','').replace(']', '').replace('\'', '').split(), lines))
+						line = list(map(lambda x: x.replace(',', '')
+							.replace('"', '')
+							.replace('[','')
+							.replace(']', '')
+							.replace('\'', '')
+							.split(), lines))
 						if not self.log:
 							data.append(line)
 						else:

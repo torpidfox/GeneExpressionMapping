@@ -6,6 +6,9 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.svm import SVC
 from random import shuffle
+from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
+
 
 num = 2
 count = 50

@@ -1,0 +1,5 @@
+*.npz
+test_data
+__pycache__
+tmp
+add_libs/__pycache__
