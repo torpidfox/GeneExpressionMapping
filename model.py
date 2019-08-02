@@ -10,11 +10,12 @@ summaries_dir = './summary/'
 tres_valid_loss = 20
 iter_count = 50
 
+dropout_prob = tf.get_default_graph().get_tensor_by_name('dropout_prob:0')
 class Model:
 	def __init__(self, sets):
 		self.sets = sets
 
-		self.valid = dict()
+		self.valid = {dropout_prob : 1}
 
 		for s in self.sets:
 			self.valid.update(s.feed_valid_dict())
@@ -53,7 +54,7 @@ class Model:
 		return self.loss
 
 	def feed_dict(self, step):
-		feed_vals = dict()
+		feed_vals = {dropout_prob : 0.8}
 
 		for s in self.sets:
 			feed_vals.update(s.feed_dict(step))

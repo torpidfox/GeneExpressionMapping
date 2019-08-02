@@ -10,6 +10,9 @@ num_hidden_2 = gene_count // 4
 num_hidden_1 = gene_count // 2
 batch_size = 50
 num_classes = 3
+dropout_prob = tf.placeholder_with_default(1.0, 
+	shape=(),
+	name='dropout_prob')
 
 shared_shape = [num_hidden_1, num_hidden_1, num_hidden_2, num_hidden_2, num_hidden_2]
 classification_shape = [num_hidden_2, num_classes]
@@ -41,7 +44,7 @@ def nn(layers, x, is_enc=False, is_private=True):
 	for i, l in enumerate(layers):
 		if i != len(layers) - 1:
 			x = activation(layer(x, l))
-			#x = tf.nn.dropout(x, 0.8) if i == 0 and is_enc else x 
+			x = tf.nn.dropout(x, dropout_prob) if i == 0 and is_enc else x 
 		elif is_enc and is_private:
 			x = activation(layer(x, l))
 		else:
