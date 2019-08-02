@@ -9,7 +9,6 @@ summaries_dir = './summary/'
 
 tres_valid_loss = 20
 iter_count = 50
-regularizer = tf.contrib.layers.l2_regularizer(scale=0.0001)
 
 class Model:
 	def __init__(self, sets):
@@ -22,6 +21,8 @@ class Model:
 
 	def losses(self):
 		private_loss = [s.loss(self.epoch_step) for s in self.sets]
+		class_loss = [s.class_loss for s in self.sets if s.tagged]
+		accuracy = [s.accuracy for s in self.sets if s.tagged]
 
 		delay_steps = [self.epoch_step % tf.to_int32(s.delay) for s in self.sets]
 		distr_loss = list()
@@ -38,15 +39,17 @@ class Model:
 					coeff = 1.0 / tf.sqrt(tf.reduce_mean(var1) * tf.reduce_mean(var2))
 
 					distr_loss.append(tf.cond(should_add,
-						lambda: los.mmd_loss(s2.result[1], s1.result[1], 1),
+						lambda: tf.losses.mean_squared_error(s2.result[1], s1.result[1]) / 2,
 						lambda: tf.to_float(0.0)
 						))
 
 		#self.loss = [tf.to_float(0.0), tf.to_float(0.0)] + private_loss
 		# reg_variables = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
 		# reg_term = tf.contrib.layers.apply_regularization(regularizer, reg_variables)
-		self.loss = distr_loss+private_loss
-
+		self.loss = distr_loss+private_loss+class_loss+accuracy
+		print(self.loss, accuracy, class_loss, private_loss)
+		tf.summary.scalar('distribution loss', distr_loss)
+		
 		return self.loss
 
 	def feed_dict(self, step):

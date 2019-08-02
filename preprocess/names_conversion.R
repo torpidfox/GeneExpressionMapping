@@ -14,4 +14,4 @@ head(genesym.probeid)
 
 library(data.table)
 mapped = setDT(genesym.probeid, key = 'probe_id')[J(genes)]
-write.table(mapped, file='../test_data/affy_to_kegg', quote=FALSE, row.names=FALSE)
+write.table(mapped, file='../test_data/affy_to_kegg_2', quote=FALSE, row.names=FALSE)

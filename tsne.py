@@ -31,8 +31,8 @@ x2 = pca.fit_transform(model1)
 ax.scatter([p[0] for p in x1],
 	[p[1] for p in x1],
 	[p[2] for p in x1])
-ax.scatter([p[0] for p in x2[:25]], [p[1] for p in x2[:25]], [p[2] for p in x2[:25]], label='2nd set schiz')
-ax.scatter([p[0] for p in x2[25:]], [p[1] for p in x2[25:]], [p[2] for p in x2[25:]], label='2nd set control')
+ax.scatter([p[0] for p in x2], [p[1] for p in x2], [p[2] for p in x2], label='2nd set')
+#ax.scatter([p[0] for p in x2[25:]], [p[1] for p in x2[25:]], [p[2] for p in x2[25:]], label='2nd set control')
 plt.title('Squezeed data')
 plt.legend()
 plt.show()

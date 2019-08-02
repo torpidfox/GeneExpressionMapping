@@ -19,17 +19,17 @@ def plot(x, y, title, pos, xl='Original', yl='Decoded'):
 	# plt.ylim(bottom=0, top=14)
 	plt.plot(ax.get_xlim(), ax.get_ylim(), ls="--", c=".1") 
 
-with np.load('../logs/one_set/model0_res_valid.npz') as f: 
+with np.load('model0_res_valid.npz') as f: 
 	d1 = f['arr_0'] 
 	print(np.shape(d1))
 	d2_1 = f['arr_3'] 
 	means = [((x - y) ** 2).mean() for x, y in zip(d1, d2_1)]
 	print(means)
 	print(np.asarray(means).mean())
-	plot(d1[15], d2_1[15], "Main dataset valid result", 3)
+	plot(d1[2], d2_1[2], "Main dataset valid result", 3)
 
 
-with np.load('../logs/one_set/model0_res_valid.npz') as f:
+with np.load('model0_res_valid.npz') as f:
 	d1 = f['arr_0'] 
 	print(np.shape(d1))
 	plot(d1[1], d1[15], "Main dataset random samples", 1, xl='Sample 1', yl='Sample 2')  
@@ -45,7 +45,7 @@ with np.load('model1_res_valid.npz') as f:
 	print(np.shape(d1))
 	d2 = f['arr_3'] 
 	print(np.shape(d2)) 
-	plot(d1[15], d2[15], "Additional dataset valid result", 4)
+	plot(d1[1], d2[1], "Additional dataset valid result", 4)
 
 # with np.load('multi_sets2/model1_res_control.npz') as f:
 # 	data2_in= f['arr_0']

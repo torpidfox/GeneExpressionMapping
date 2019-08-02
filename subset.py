@@ -9,9 +9,12 @@ gene_count = 2053
 num_hidden_2 = gene_count // 4
 num_hidden_1 = gene_count // 2
 batch_size = 50
-shared_shape = [num_hidden_1, num_hidden_1, num_hidden_2, num_hidden_2, num_hidden_2]
-activation = tf.nn.selu
+num_classes = 3
 
+shared_shape = [num_hidden_1, num_hidden_1, num_hidden_2, num_hidden_2, num_hidden_2]
+classification_shape = [num_hidden_2, num_classes]
+
+activation = tf.nn.selu
 init_weights = lambda n1, n2: tf.Variable(
             tf.random_normal([n1, n2], 0, np.sqrt(2 / n1))
             )
@@ -21,6 +24,7 @@ init_zeros = lambda n1: tf.Variable([0] * n1, dtype = 'float')
 layer = lambda x, v: tf.nn.xw_plus_b(x, v['w'], v['b'])
 
 recon_loss = lambda x1, x2: tf.losses.mean_squared_error(x1, x2)
+
 
 def init_variables(shape):
 	variable_list = list()
@@ -45,8 +49,26 @@ def nn(layers, x, is_enc=False, is_private=True):
 
 	return x
 
+def classify(x, labels):
+	logits = classification_layers(x)
+	class_loss = tf.losses.sigmoid_cross_entropy(multi_class_labels=labels,
+			logits=logits)
+
+	correct_pred = tf.equal(
+		tf.argmax(tf.nn.softmax(logits), 1), 
+		tf.argmax(labels, 1)
+		)
+
+	accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+
+	return class_loss, accuracy
+
+
 shared_variables = init_variables(shared_shape)
 shared_layers = lambda x: nn(shared_variables, x, True, False)
+
+calssification_variables = init_variables(classification_shape)
+classification_layers = lambda x: layer(x, calssification_variables[0])
 
 class PrivateDomain:
 	def __init__(self,
@@ -61,6 +83,7 @@ class PrivateDomain:
 		self.weight = weight
 		self.tagged = tagged
 		self.delay = delay
+		self.ind = ind
 		self.classes = classes
 		self.encoder_shape = [self.data.dim, self.data.dim, num_hidden_1, num_hidden_1]
 
@@ -75,7 +98,7 @@ class PrivateDomain:
 
 		if tagged:
 			self.labels = tf.placeholder(tf.float32,
-				shape=[batch_size, 1])
+				shape=[batch_size, self.data.num_classes])
 
 			self.feedable.append(self.labels)
 
@@ -88,9 +111,16 @@ class PrivateDomain:
 	def run(self, x):
 		encoded = nn(self.encoder_v, x, is_enc=True)
 		squeezed = shared_layers(encoded)
+
+		if self.tagged:
+			self.class_loss, self.accuracy = classify(squeezed, self.labels)
+
 		decoded = nn(self.decoder_v, squeezed)
 
 		self.result = [x, encoded, squeezed, decoded]
+
+		if self.tagged:
+			self.result.append(self.labels)
 
 		return recon_loss(x, decoded)
 
@@ -104,13 +134,10 @@ class PrivateDomain:
 			lambda: batch_loss,
 			lambda: tf.to_float(0.0))
 
-		if self.tagged:
-			self.class_loss = tf.losses.sigmoid_cross_entropy(multi_class_labels=self.labels,
-					logits=self.logits)
-		else:
+		if not self.tagged:
 			self.class_loss = 0.0
 
-		return tf.reduce_sum([self.weight * self.dec_loss, self.class_loss])
+		return tf.reduce_sum([self.weight * self.dec_loss])
 
 	def feed_dict(self, step):
 		if not step % self.delay:
@@ -118,12 +145,14 @@ class PrivateDomain:
 		else:
 			vals = self.data.placeholders()
 
-		#feed_dict = {self.x : vals}
 		feed_dict = {k: v for k, v in zip(self.feedable, vals)}
 
 		return feed_dict
 
 	def feed_valid_dict(self):
 		feed_dict = {self.x : self.data.valid}
+
+		if self.tagged:
+			feed_dict.update({self.labels : self.data.valid_tags})
 
 		return feed_dict
