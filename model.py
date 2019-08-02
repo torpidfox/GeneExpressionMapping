@@ -23,7 +23,7 @@ class Model:
 	def losses(self):
 		private_loss = [s.loss(self.epoch_step) for s in self.sets]
 		class_loss = [s.class_loss for s in self.sets if s.tagged]
-		accuracy = [s.accuracy for s in self.sets if s.tagged]
+		self.accuracy = [s.accuracy for s in self.sets if s.tagged]
 
 		delay_steps = [self.epoch_step % tf.to_int32(s.delay) for s in self.sets]
 		distr_loss = list()
@@ -47,7 +47,7 @@ class Model:
 		#self.loss = [tf.to_float(0.0), tf.to_float(0.0)] + private_loss
 		# reg_variables = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
 		# reg_term = tf.contrib.layers.apply_regularization(regularizer, reg_variables)
-		self.loss = distr_loss+private_loss+class_loss+accuracy
+		self.loss = distr_loss+private_loss+class_loss
 		print(self.loss, accuracy, class_loss, private_loss)
 		tf.summary.scalar('distribution loss', distr_loss)
 		
@@ -82,7 +82,7 @@ class Model:
 
 		opt = tf.train.AdagradOptimizer(learning_rate=1e-3).minimize(total_loss)
 
-		valid_op = [self.loss] + [s.result for s in self.sets]
+		valid_op = [self.loss] + [self.accuracy] + [s.result for s in self.sets]
 		train_op = valid_op + [opt]
 
 		return train_op, valid_op, step_inc_op
@@ -92,6 +92,7 @@ class Model:
 		valid_loss_step = 0
 		min_valid_loss = float('inf')
 		valid_loss = 10
+		valid_acc = 0
 		step = 0
 		saver = tf.train.Saver()
 
@@ -108,17 +109,17 @@ class Model:
 					step = sess.run(step_inc_op)
 					feed_dict = self.feed_dict(step)
 
-					loss, *result, _ = sess.run(train_op, feed_dict=feed_dict)
+					loss, acc, *result, _ = sess.run(train_op, feed_dict=feed_dict)
 					#train_writer.add_summary(summary, step)
 
 
 					if not step % 10:
-						print(step, loss)
+						print(step, loss, acc)
 						# print("Epoch: {}, distr loss: {}, recon loss 1: {}, recon loss 2: {}, regular loss: {}"
 						# 	.format(step, loss[0], loss[2], loss[3], loss[4]))
 						
-						print('valid', valid_loss, valid_loss_step)
-						valid_loss, *valid_result = sess.run(valid_op, feed_dict=self.valid)
+						print('valid', valid_loss, valid_acc, valid_loss_step)
+						valid_loss, valid_acc, *valid_result = sess.run(valid_op, feed_dict=self.valid)
 						#test_writer.add_summary(summary, step)
 
 						if sum(valid_loss) < min_valid_loss:
