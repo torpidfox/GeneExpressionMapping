@@ -16,16 +16,25 @@ class Logger:
 
     @staticmethod
     def _dump_to_file(filename,
-        vals):
- 
-        savez(filename, *vals)
+        vals): 
+        savez(filename, **vals)
 
     def dump_res(self,
         vals,
+        vals_description=['original', 
+        'encoded', 
+        'squeezed', 
+        'decoded', 
+        #'labels', 
+        'second_set',
+        'second_set_original'],
         attr='train'):
 
         for ind, el in enumerate(vals):
-            self._dump_to_file('{}model{}_res_{}'.format(self.path, ind, attr), el)
+            # add labels to data for convinience
+            print(len(el))
+            data = {key : el for key, el in zip(vals_description, el)}
+            self._dump_to_file('{}model{}_res_{}'.format(self.path, ind, attr), data)
 
     def log_results(self,
         epoch,

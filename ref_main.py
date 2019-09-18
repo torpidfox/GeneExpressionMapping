@@ -2,21 +2,40 @@ from data import Data
 from subset import PrivateDomain
 from model import sess_runner
 
-main_dataset = Data(log=True, filename='test_data/GSE80655_filtered.csv')
+#main_dataset = Data(log=False,
+#	filename='../data/3732_filtered.txt',
+#	batch_size=50,
+#	sep=' ')
+
+main_dataset = Data(filename='../data/3732_filtered.txt',
+        split=True,
+        split_start=800,
+	#additional_info='../data/gse80655_annotation.txt',
+ 	batch_size=50,
+	sep=' ',
+ 	log=False)
+
+supporting_dataset = Data(filename='../data/3732_filtered.txt',
+        split=True,
+        split_end=800,
+        ind=1,
+        #additional_info='../data/gse80655_annotation.txt',
+        batch_size=50,
+        sep=' ',
+        log=False)
 
 
-model = [PrivateDomain(main_dataset, delay=1, tagged=False, ind=1)]
+def runner():
+	model = [PrivateDomain(main_dataset, delay=1, tagged=False)]
 
-# model.append(PrivateDomain(supporting_dataset, 
-# 	weight=1, 
-# 	ind=1, 
-# 	tagged=False))
+	model.append(PrivateDomain(supporting_dataset, 
+	 	weight=1, 
+	 	ind=1, 
+	 	tagged=False))
 
-#model.append(nn.Model(check_dataset, column = 'Disease', ind=2, classes=[0, 1]))
-print(next(main_dataset))
+	sess_runner(model)
 
-sess_runner(model)
-#nn.sess_runner(model, ["red/model0.ckpt", "red/model1.ckpt", "red/model2.ckpt"])
+runner()
 
 
 
